@@ -7,6 +7,24 @@ const LAUNCH_API_URL = 'https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?li
 const LAUNCH_CACHE_KEY = 'exosphere_launch_cache';
 const LAUNCH_CACHE_EXPIRY = 60 * 60 * 1000; // 1 hour — launch schedule rarely changes faster
 
+/** Shape of a single launch from the SpaceDevs API (subset of fields we use). */
+interface ApiLaunch {
+  id: string;
+  name: string;
+  net: string;
+  status?: { name?: string };
+  launch_service_provider?: { name?: string };
+  pad?: {
+    name?: string;
+    latitude?: string;
+    longitude?: string;
+    location?: { name?: string };
+  };
+  mission?: { name?: string; description?: string } | null;
+  image_url?: string;
+  image?: string;
+}
+
 export async function fetchUpcomingLaunches(): Promise<LaunchData[]> {
   try {
     // 1. Check localStorage cache
@@ -25,7 +43,7 @@ export async function fetchUpcomingLaunches(): Promise<LaunchData[]> {
     }
     const data = await response.json();
     
-    const launches: LaunchData[] = data.results.map((launch: Record<string, unknown>) => ({
+    const launches: LaunchData[] = data.results.map((launch: ApiLaunch) => ({
       id: launch.id,
       name: launch.name,
       net: launch.net,
