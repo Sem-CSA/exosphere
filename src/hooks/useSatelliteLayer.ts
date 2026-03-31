@@ -227,6 +227,7 @@ export function useSatelliteLayer({
         workerRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return { satellites, loadingSats, satelliteCount };

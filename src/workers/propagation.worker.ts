@@ -17,7 +17,7 @@ export interface SatWorkerOutput {
 }
 
 // Cache satrec objects so we don't re-parse TLEs every frame
-let satrecCache: Map<string, ReturnType<typeof twoline2satrec>> = new Map();
+const satrecCache: Map<string, ReturnType<typeof twoline2satrec>> = new Map();
 let satIds: string[] = [];
 
 self.onmessage = (e: MessageEvent<SatWorkerInput>) => {

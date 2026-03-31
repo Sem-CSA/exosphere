@@ -4,7 +4,7 @@ import type { SatelliteData } from '../types';
 
 interface UseSpySystemProps {
   viewerRef: React.MutableRefObject<Cesium.Viewer | null>;
-  satPrimitivesRef: React.MutableRefObject<Map<string, any>>;
+  satPrimitivesRef: React.MutableRefObject<Map<string, Cesium.PointPrimitive>>;
   allSats: SatelliteData[];
   targetLocation: { lat: number; lon: number; name: string } | null;
   exclusiveIdsRef: React.MutableRefObject<Set<string> | null>;
@@ -155,7 +155,7 @@ export function useSpySystem({
             if (!p || !p.position) return Cesium.Cartesian3.ZERO;
             const c = Cesium.Ellipsoid.WGS84.cartesianToCartographic(p.position);
             return c ? Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, 0) : p.position;
-          }, false) as any;
+          }, false) as unknown as Cesium.PositionProperty;
 
           const cameraRadiusCallback = new Cesium.CallbackProperty(() => {
             const p = satPrimitivesRef.current.get(id);
@@ -210,13 +210,15 @@ export function useSpySystem({
 
     viewer.scene.preUpdate.addEventListener(updateListener);
 
+    const currentFootprints = footprintEntitiesRef.current;
     return () => {
       viewer.scene.preUpdate.removeEventListener(updateListener);
       if (targetEntityRef.current) viewer.entities.remove(targetEntityRef.current);
-      footprintEntitiesRef.current.forEach((entity) => viewer.entities.remove(entity));
-      footprintEntitiesRef.current.clear();
+      currentFootprints.forEach((entity) => viewer.entities.remove(entity));
+      currentFootprints.clear();
       exclusiveIdsRef.current = null; // Important reset when hook unmounts or target changes
     };
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetLocation, allSats]); 
 }

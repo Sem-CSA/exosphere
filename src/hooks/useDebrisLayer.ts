@@ -56,7 +56,7 @@ export function useDebrisLayer({
         { type: 'module' }
       );
 
-      workerRef.current.onmessage = (e: MessageEvent<any>) => {
+      workerRef.current.onmessage = (e: MessageEvent<{ type: string; positions: Record<string, { x: number; y: number; z: number } | null> }>) => {
         if (e.data.type === 'positions') {
           latestPositionsRef.current = e.data.positions;
         }
@@ -197,6 +197,7 @@ export function useDebrisLayer({
         workerRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return { debrisList, loadingDebris, debrisCount };

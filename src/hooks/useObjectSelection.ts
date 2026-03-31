@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import * as Cesium from 'cesium';
-import { getSatelliteDetails } from '../services/satelliteService';
 import type { SatelliteData, LaunchData } from '../types';
 
 interface UseObjectSelectionProps {
@@ -29,7 +28,7 @@ export function useObjectSelection({
 
   // Deselect satellites if the master layer is hidden
   useEffect(() => {
-    if (!showSats) setSelectedSat(null);
+    if (!showSats) queueMicrotask(() => setSelectedSat(null));
   }, [showSats]);
 
   // Set up click handler
@@ -38,7 +37,7 @@ export function useObjectSelection({
     const viewer = viewerRef.current;
 
     handlerRef.current = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-    handlerRef.current.setInputAction((click: any) => {
+    handlerRef.current.setInputAction((click: { position: Cesium.Cartesian2 }) => {
       // ── Magnetic Picking Logic ──
       // Since satellite points are tiny (3-5px), we perform a 'drillPick' 
       // which scans all layers under the specific pixel.
@@ -53,7 +52,7 @@ export function useObjectSelection({
         return true;
       });
 
-      let pickedObject = validPicks[0];
+      const pickedObject = validPicks[0];
 
       if (Cesium.defined(pickedObject)) {
         // Handle Launch Clicks
@@ -112,7 +111,7 @@ export function useObjectSelection({
     return () => {
       if (handlerRef.current) handlerRef.current.destroy();
     };
-  }, [onLocationSelect, viewerRef.current]);
+  }, [onLocationSelect, viewerRef]);
 
   // Draw orbit path and highlight when satellite is selected
   useEffect(() => {
@@ -135,14 +134,6 @@ export function useObjectSelection({
     }
 
     if (selectedSat) {
-      const details = getSatelliteDetails(selectedSat, Cesium.JulianDate.toDate(viewerRef.current.clock.currentTime));
-
-      let durationMinutes = 100;
-      if (details && details.revsPerDay && parseFloat(details.revsPerDay) > 0) {
-        durationMinutes = Math.ceil(1440 / parseFloat(details.revsPerDay));
-      }
-      durationMinutes = Math.ceil(durationMinutes * 1.05);
-
       // Highlight the primitive
       const selectedPrim = satPrimitivesRef.current.get(selectedSat.id);
       if (selectedPrim) {
@@ -165,7 +156,7 @@ export function useObjectSelection({
           return Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, 0);
         }
         return prim.position;
-      }, false) as any;
+      }, false) as unknown as Cesium.PositionProperty;
 
       const rfFootprintRadiusCallback = new Cesium.CallbackProperty(() => {
         const prim = satPrimitivesRef.current.get(selectedSat.id);
@@ -244,6 +235,7 @@ export function useObjectSelection({
 
       fovEntitiesRef.current = [rfEntity, cameraEntity];
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSat]);
 
   return { selectedSat, selectedLaunch, setSelectedSat, setSelectedLaunch };

@@ -21,21 +21,24 @@ export default function SatellitePanel({
   viewerRef,
   isPlaying,
 }: SatellitePanelProps) {
-  const [, setPanelRefresh] = useState(0);
+  const [satDetails, setSatDetails] = useState<ReturnType<typeof getSatelliteDetails>>(null);
 
-  // Auto-refresh telemetry every second while playing
+  // Compute satellite details in an effect, refresh every second while playing
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
+    const compute = () => {
+      const viewer = viewerRef.current;
+      if (viewer) {
+        setSatDetails(getSatelliteDetails(selectedSat, Cesium.JulianDate.toDate(viewer.clock.currentTime)));
+      }
+    };
+    compute();
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (isPlaying) {
-      interval = setInterval(() => setPanelRefresh(prev => prev + 1), 1000);
+      interval = setInterval(compute, 1000);
     }
-    return () => clearInterval(interval);
-  }, [isPlaying]);
-
-  let satDetails = null;
-  if (viewerRef.current) {
-    satDetails = getSatelliteDetails(selectedSat, Cesium.JulianDate.toDate(viewerRef.current.clock.currentTime));
-  }
+    return () => { if (interval) clearInterval(interval); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, selectedSat]);
 
   return (
     <div className="absolute top-4 right-4 glass-panel p-5 w-80 flex flex-col shadow-2xl animate-in fade-in slide-in-from-right-4 duration-300"

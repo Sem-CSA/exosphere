@@ -25,7 +25,7 @@ export async function fetchUpcomingLaunches(): Promise<LaunchData[]> {
     }
     const data = await response.json();
     
-    const launches: LaunchData[] = data.results.map((launch: any) => ({
+    const launches: LaunchData[] = data.results.map((launch: Record<string, unknown>) => ({
       id: launch.id,
       name: launch.name,
       net: launch.net,

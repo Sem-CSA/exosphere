@@ -204,7 +204,7 @@ export function computePosition(sat: SatelliteData, date: Date): { x: number, y:
         z: positionEcf.z
       };
     }
-  } catch (e) {
+  } catch {
     // Ignore decay or math errors during propagation
   }
   return null;
@@ -244,7 +244,7 @@ export function getSatelliteDetails(sat: SatelliteData, date: Date) {
       eccentricity: eccentricity.toFixed(4),
       revsPerDay: revsPerDay.toFixed(2)
     };
-  } catch (e) {
+  } catch {
     return null;
   }
 }

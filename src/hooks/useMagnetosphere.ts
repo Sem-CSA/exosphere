@@ -78,7 +78,7 @@ function generateDipoleFieldLine(
   // We use a quick binary search to find exactly where r_RE = 1.0.
   let latLow = 0;
   let latHigh = 89 * (Math.PI / 180); // max 89 degrees to avoid exact pole
-  let maxR_day = magnetopauseRE * 0.95;
+  const maxR_day = magnetopauseRE * 0.95;
 
   for (let iter = 0; iter < 12; iter++) {
     const mid = (latLow + latHigh) / 2;
@@ -332,7 +332,7 @@ export function useMagnetosphere({
 
       // Remove old field line primitives
       for (const prim of fieldLinePrimitivesRef.current) {
-        try { viewer.scene.primitives.remove(prim); } catch {}
+        try { viewer.scene.primitives.remove(prim); } catch { /* primitive already removed */ }
       }
       fieldLinePrimitivesRef.current = [];
 
@@ -394,20 +394,20 @@ export function useMagnetosphere({
     return () => {
       // Cleanup
       if (updateListenerRef.current) {
-        try { viewer.scene.preUpdate.removeEventListener(updateListenerRef.current); } catch {}
+        try { viewer.scene.preUpdate.removeEventListener(updateListenerRef.current); } catch { /* listener already removed */ }
       }
       if (fetchIntervalRef.current) clearInterval(fetchIntervalRef.current);
       clearInterval(auroraInterval);
 
       // Remove field line primitives
       for (const prim of fieldLinePrimitivesRef.current) {
-        try { viewer.scene.primitives.remove(prim); } catch {}
+        try { viewer.scene.primitives.remove(prim); } catch { /* primitive already removed */ }
       }
       fieldLinePrimitivesRef.current = [];
 
       // Remove aurora points
       if (auroraPointsRef.current) {
-        try { viewer.scene.primitives.remove(auroraPointsRef.current); } catch {}
+        try { viewer.scene.primitives.remove(auroraPointsRef.current); } catch { /* already removed */ }
         auroraPointsRef.current = null;
       }
     };

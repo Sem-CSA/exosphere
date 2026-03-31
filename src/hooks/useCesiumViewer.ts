@@ -68,15 +68,17 @@ export function useCesiumViewer(
       };
       window.addEventListener('resize', handleResize);
 
+      const satPrimitives = satPrimitivesRef.current;
       return () => {
         window.removeEventListener('resize', handleResize);
         if (viewerRef.current) {
           viewerRef.current.destroy();
           viewerRef.current = null;
         }
-        satPrimitivesRef.current.clear();
+        satPrimitives.clear();
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return { viewerRef, pointsRef, focusEntityRef, satPrimitivesRef };

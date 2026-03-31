@@ -23,6 +23,7 @@ export function useLaunchLayer({ viewerRef, showLaunches }: UseLaunchLayerProps)
         }
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showLaunches]);
 
   useEffect(() => {
@@ -68,6 +69,7 @@ export function useLaunchLayer({ viewerRef, showLaunches }: UseLaunchLayerProps)
     };
 
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return { loadingLaunches, launchCount, launches };

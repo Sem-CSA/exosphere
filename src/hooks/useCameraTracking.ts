@@ -18,7 +18,7 @@ export function useCameraTracking({
 
   // Clear tracking when no satellite is selected
   useEffect(() => {
-    if (!selectedSat) setIsTracking(false);
+    if (!selectedSat) queueMicrotask(() => setIsTracking(false));
   }, [selectedSat]);
 
   // Camera tracking logic
@@ -56,7 +56,7 @@ export function useCameraTracking({
     } else {
       viewerRef.current.trackedEntity = undefined;
     }
-  }, [selectedSat, isTracking]);
+  }, [selectedSat, isTracking, viewerRef, focusEntityRef]);
 
   return { isTracking, setIsTracking };
 }
