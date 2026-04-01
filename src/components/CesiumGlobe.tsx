@@ -221,11 +221,11 @@ export default function CesiumGlobe() {
         destination: Cesium.Cartesian3.fromDegrees(0, 20, 8000000),
         orientation: {
           heading: 0.0,
-          pitch: Cesium.Math.toRadians(-90),
+          pitch: Cesium.Math.toRadians(-90), // Look straight down at the 20deg latitude point
           roll: 0.0,
         }
       });
-      queueMicrotask(() => setSeqPhase('WAITING_DATA'));
+      setSeqPhase('WAITING_DATA');
     }
   }, [viewerRef, seqPhase, isFullAnim]);
 
@@ -296,49 +296,29 @@ export default function CesiumGlobe() {
     if (!viewer) return;
 
     let zoomVelocity = 0;
-    const maxZoomVelocity = 250000; // meters per frame
+    const maxZoomVelocity = 350000; // meters per frame
+    const targetHeight = 120000000; // 120,000 km
 
     const handleTick = () => {
       // Rotate Earth (rotate camera around origin)
-      viewer.scene.camera.rotate(Cesium.Cartesian3.UNIT_Z, 0.003); 
+      viewer.scene.camera.rotate(Cesium.Cartesian3.UNIT_Z, 0.003);
 
       // Zoom out mechanics
       if (seqPhase !== 'WAITING_DATA') {
         const height = viewer.camera.positionCartographic.height;
-        
-        // Dynamically compute the destination height where Earth touches the top and bottom bounds of the screen
-        const radius = Cesium.Ellipsoid.WGS84.maximumRadius;
-        const frustum = viewer.scene.camera.frustum as Cesium.PerspectiveFrustum;
-        const aspectRatio = frustum.aspectRatio ?? 1.0;
-        let fovy = frustum.fov ?? Cesium.Math.toRadians(60);
-        
-        // In portrait mode, we must calculate the vertical FOV from the horizontal FOV
-        if (aspectRatio < 1.0) {
-          fovy = fovy / aspectRatio;
-        }
-        
-        const targetHeight = (radius / Math.sin(fovy / 2)) - radius;
-
         if (height < targetHeight) {
           // Smooth acceleration
           if (zoomVelocity < maxZoomVelocity) {
-            zoomVelocity += 15000;
+            zoomVelocity += 5000;
           }
-          // Don't overshoot
-          const step = Math.min(zoomVelocity, targetHeight - height);
-          viewer.camera.moveBackward(step);
-        } else if (height > targetHeight + 10) {
-          // If window is resized to be smaller, adjust the camera closer 
-          viewer.camera.moveForward(height - targetHeight);
+          viewer.camera.moveBackward(zoomVelocity);
         }
       }
     };
 
     viewer.clock.onTick.addEventListener(handleTick);
     return () => { viewer.clock.onTick.removeEventListener(handleTick); };
-  }, [seqPhase, viewerRef]);
-
-  // ── Magnetosphere System ──
+  }, [seqPhase, viewerRef]);  // ── Magnetosphere System ──
   const handleSolarWindUpdate = useCallback((data: SolarWindData) => {
     setSolarWindData(data);
   }, []);
