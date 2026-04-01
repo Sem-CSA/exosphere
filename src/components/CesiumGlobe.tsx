@@ -137,6 +137,32 @@ export default function CesiumGlobe() {
     }, [spyModeActive, viewerRef])
     });
 
+  // ── Sync Launch Selection with Eyes Above Target ──
+  useEffect(() => {
+    if (selectedLaunch?.pad?.latitude && selectedLaunch?.pad?.longitude) {
+      const lat = parseFloat(selectedLaunch.pad.latitude);
+      const lon = parseFloat(selectedLaunch.pad.longitude);
+      setSpyTargetLocation({ 
+        lat, 
+        lon, 
+        name: `Launch: ${selectedLaunch.name}` 
+      });
+      setSpyModeActive(true);
+      
+      if (viewerRef.current) {
+        viewerRef.current.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(lon, lat, 2500000),
+          orientation: {
+            heading: 0,
+            pitch: Cesium.Math.toRadians(-90),
+            roll: 0,
+          },
+          duration: 2.0
+        });
+      }
+    }
+  }, [selectedLaunch, viewerRef]);
+
   // ── Eyes Above Mode System ──
   useSpySystem({ 
     viewerRef, 
@@ -166,7 +192,7 @@ export default function CesiumGlobe() {
         setSpyModeActive(true);
         if (viewerRef.current) {
           viewerRef.current.camera.flyTo({
-            destination: Cesium.Cartesian3.fromDegrees(lon, lat, 15000000),
+            destination: Cesium.Cartesian3.fromDegrees(lon, lat, 2500000),
             orientation: { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0 },
             duration: 4.0
           });
