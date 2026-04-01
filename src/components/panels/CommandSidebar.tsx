@@ -124,9 +124,11 @@ const CommandSidebar = memo(function CommandSidebar({
   magnetosphereActive, solarWind, onToggleMagnetosphere,
   onSelectLaunch,
 }: CommandSidebarProps) {
+  
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Section expanded states
-  const [satsExpanded, setSatsExpanded] = useState(true);
+  const [satsExpanded, setSatsExpanded] = useState(false);
   const [debrisExpanded, setDebrisExpanded] = useState(false);
   const [launchesExpanded, setLaunchesExpanded] = useState(false);
   const [spyExpanded, setSpyExpanded] = useState(true);
@@ -142,26 +144,9 @@ const CommandSidebar = memo(function CommandSidebar({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   
-  // ── Auto-drop (expand) section if feature is enabled ──
-  useEffect(() => {
-    if (showSatsUI) setSatsExpanded(true);
-  }, [showSatsUI]);
-
-  useEffect(() => {
-    if (showDebrisUI) setDebrisExpanded(true);
-  }, [showDebrisUI]);
-
-  useEffect(() => {
-    if (showLaunchesUI) setLaunchesExpanded(true);
-  }, [showLaunchesUI]);
-
   useEffect(() => {
     if (spyModeActive) setSpyExpanded(true);
   }, [spyModeActive]);
-
-  useEffect(() => {
-    if (magnetosphereActive) setMagExpanded(true);
-  }, [magnetosphereActive]);
 
   // Sync sidebar address/target if surveillance status changes elsewhere (e.g. globe click or panel close)
   useEffect(() => {
@@ -302,15 +287,57 @@ const CommandSidebar = memo(function CommandSidebar({
     } catch { return net; }
   };
 
-  return (
-    <div className="command-sidebar">
-      {/* HEADER */}
-      <div className="sidebar-header">
-        <Globe2 className="text-accent" size={22} />
-        <span className="sidebar-title">EXOSPHERE</span>
-      </div>
+  const handleSatsHeaderToggle = () => {
+    if (!satsExpanded && !showSatsUI) setShowSatsUI(true);
+    setSatsExpanded(!satsExpanded);
+  };
 
-      <div className="sidebar-scroll">
+  const handleDebrisHeaderToggle = () => {
+    if (!debrisExpanded && !showDebrisUI) setShowDebrisUI(true);
+    setDebrisExpanded(!debrisExpanded);
+  };
+
+  const handleLaunchesHeaderToggle = () => {
+    if (!launchesExpanded && !showLaunchesUI) setShowLaunchesUI(true);
+    setLaunchesExpanded(!launchesExpanded);
+  };
+
+  const handleSpyHeaderToggle = () => {
+    if (!spyExpanded && !spyModeActive) onToggleSpyMode();
+    setSpyExpanded(!spyExpanded);
+  };
+
+  const handleMagHeaderToggle = () => {
+    if (!magExpanded && !magnetosphereActive) onToggleMagnetosphere();
+    setMagExpanded(!magExpanded);
+  };
+
+  return (
+    <>
+      <div 
+        className="command-sidebar"
+        style={{
+          transform: isCollapsed ? 'translateX(calc(-100% - 24px))' : 'translateX(0)',
+          transition: 'transform 300ms ease',
+          pointerEvents: isCollapsed ? 'none' : 'auto',
+        }}
+      >
+        {/* HEADER */}
+        <div className="sidebar-header flex justify-between items-center bg-[rgba(15,23,42,0.9)] border-b border-[rgba(255,255,255,0.1)] pb-3 mb-2">
+          <div className="flex items-center gap-2">
+            <Globe2 className="text-accent" size={22} />
+            <h1 className="text-lg font-black tracking-widest text-white">EXOSPHERE</h1>
+          </div>
+          <button 
+            onClick={() => setIsCollapsed(true)} 
+            className="text-gray-400 hover:text-white transition-colors p-1"
+            title="Retract Sidebar"
+          >
+            <ChevronDown className="transform rotate-90" size={20} />
+          </button>
+        </div>
+
+        <div className="sidebar-scroll">
 
         {/* ════════ ORBITAL TRACKING ════════ */}
         <div className="sidebar-section">
@@ -320,7 +347,7 @@ const CommandSidebar = memo(function CommandSidebar({
           <div className="sidebar-item">
             <SectionHeader
               icon={<Satellite size={14} />} label="Active Satellites"
-              expanded={satsExpanded} onToggle={() => setSatsExpanded(!satsExpanded)}
+              expanded={satsExpanded} onToggle={handleSatsHeaderToggle}
               accentColor="var(--accent)"
               rightSlot={
                 <div className="flex items-center gap-2">
@@ -355,7 +382,7 @@ const CommandSidebar = memo(function CommandSidebar({
           <div className="sidebar-item">
             <SectionHeader
               icon={<ShieldAlert size={14} />} label="Space Debris"
-              expanded={debrisExpanded} onToggle={() => setDebrisExpanded(!debrisExpanded)}
+              expanded={debrisExpanded} onToggle={handleDebrisHeaderToggle}
               accentColor="#ff6b35"
               rightSlot={
                 <div className="flex items-center gap-2">
@@ -390,7 +417,7 @@ const CommandSidebar = memo(function CommandSidebar({
           <div className="sidebar-item">
             <SectionHeader
               icon={<Rocket size={14} />} label="Upcoming Launches"
-              expanded={launchesExpanded} onToggle={() => setLaunchesExpanded(!launchesExpanded)}
+              expanded={launchesExpanded} onToggle={handleLaunchesHeaderToggle}
               accentColor="#f97316"
               rightSlot={
                 <div className="flex items-center gap-2">
@@ -450,7 +477,7 @@ const CommandSidebar = memo(function CommandSidebar({
           <div className="sidebar-item">
             <SectionHeader
               icon={<ShieldAlert size={14} />} label="Eyes Above"
-              expanded={spyExpanded} onToggle={() => setSpyExpanded(!spyExpanded)}
+              expanded={spyExpanded} onToggle={handleSpyHeaderToggle}
               accentColor="#ef4444"
               rightSlot={
                 <div className="flex items-center gap-2">
@@ -539,7 +566,7 @@ const CommandSidebar = memo(function CommandSidebar({
           <div className="sidebar-item">
             <SectionHeader
               icon={<Shield size={14} />} label="Magnetosphere"
-              expanded={magExpanded} onToggle={() => setMagExpanded(!magExpanded)}
+              expanded={magExpanded} onToggle={handleMagHeaderToggle}
               accentColor={magnetosphereActive ? kpColor : '#64b5f6'}
               rightSlot={
                 <div className="flex items-center gap-2">
@@ -639,9 +666,37 @@ const CommandSidebar = memo(function CommandSidebar({
             )}
           </div>
         </div>
-
       </div>
-    </div>
+      </div> {/* CLOSING command-sidebar */}
+
+      {/* Retracted / Collapsed Button */}
+      {isCollapsed && (
+        <button
+          onClick={() => setIsCollapsed(false)}
+          className="fixed top-4 left-4 backdrop-blur-md border rounded-md shadow-2xl p-3 flex flex-col items-center gap-3 group"
+          title="Expand Command Sidebar"
+          style={{
+            zIndex: 60,
+            background: 'rgba(15,23,42,0.9)',
+            borderColor: 'rgba(255,255,255,0.15)',
+            transition: 'transform 200ms ease, background-color 200ms ease, box-shadow 200ms ease',
+          }}
+        >
+          <div className="relative">
+            <Globe2 size={24} className="text-accent" />
+          </div>
+          
+          {/* Subtle Indicator Lights */}
+          <div className="flex gap-1">
+            <div className="rounded-full" style={{ width: 6, height: 6, background: showSatsUI ? '#60a5fa' : '#4b5563', boxShadow: showSatsUI ? '0 0 5px rgba(96,165,250,0.8)' : 'none' }} />
+            <div className="rounded-full" style={{ width: 6, height: 6, background: spyModeActive ? '#ef4444' : '#4b5563', boxShadow: spyModeActive ? '0 0 5px rgba(239,68,68,0.8)' : 'none' }} />
+            <div className="rounded-full" style={{ width: 6, height: 6, background: magnetosphereActive ? '#fb923c' : '#4b5563', boxShadow: magnetosphereActive ? '0 0 5px rgba(251,146,60,0.8)' : 'none' }} />
+          </div>
+
+          <ChevronRight size={18} className="text-secondary" />
+        </button>
+      )}
+    </>
   );
 });
 

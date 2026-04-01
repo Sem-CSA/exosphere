@@ -192,14 +192,15 @@ export function useSatelliteLayer({
               }
               if (primitive.pixelSize !== 8) primitive.pixelSize = 8;
             } else {
-              if (primitive.color.alpha !== 0.15) {
+              if (primitive.color.alpha !== 0.85) {
                 let bc = baseColors.get(sat.colorHex);
                 if (!bc) { bc = Cesium.Color.fromCssColorString(sat.colorHex); baseColors.set(sat.colorHex, bc); }
                 Cesium.Color.clone(bc, colorScratch);
-                colorScratch.alpha = 0.15;
+                colorScratch.alpha = 0.85;
                 primitive.color = colorScratch;
               }
-              if (primitive.pixelSize !== 3) primitive.pixelSize = 3;
+              const targetSize = sat.group === 'STATION' ? 8 : (sat.group === 'OTHER' ? 3 : 5);
+              if (primitive.pixelSize !== targetSize) primitive.pixelSize = targetSize;
             }
           } else {
             if (primitive.color.alpha !== 0.85) {

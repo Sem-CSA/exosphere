@@ -8,6 +8,7 @@ interface UseObjectSelectionProps {
   satPrimitivesRef: MutableRefObject<Map<string, Cesium.PointPrimitive>>;
   showSats: boolean;
   onLocationSelect?: (lat: number, lon: number) => void;
+  onLaunchSelect?: (launch: LaunchData) => void;
 }
 
 export function useObjectSelection({
@@ -15,6 +16,7 @@ export function useObjectSelection({
   satPrimitivesRef,
   showSats,
   onLocationSelect,
+  onLaunchSelect,
 }: UseObjectSelectionProps) {
   const [selectedSat, setSelectedSat] = useState<SatelliteData | null>(null);
   const [selectedLaunch, setSelectedLaunch] = useState<LaunchData | null>(null);
@@ -60,7 +62,9 @@ export function useObjectSelection({
         if (pickedObject.id instanceof Cesium.Entity) {
           const entity = pickedObject.id;
           if (entity.properties && entity.properties.type?.getValue() === 'launch') {
-            setSelectedLaunch(entity.properties.data.getValue());
+            const launch = entity.properties.data.getValue() as LaunchData;
+            setSelectedLaunch(launch);
+            onLaunchSelect?.(launch);
             setSelectedSat(null);
             return;
           }
@@ -112,7 +116,7 @@ export function useObjectSelection({
     return () => {
       if (handlerRef.current) handlerRef.current.destroy();
     };
-  }, [onLocationSelect, viewerRef]);
+  }, [onLaunchSelect, onLocationSelect, viewerRef]);
 
   // Draw orbit path and highlight when satellite is selected
   useEffect(() => {

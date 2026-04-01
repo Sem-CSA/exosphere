@@ -16,7 +16,7 @@ import EyesAbovePanel from './panels/EyesAbovePanel';
 import LaunchPanel from './panels/LaunchPanel';
 import TimeBar from './panels/TimeBar';
 import { useSpySystem } from '../hooks/useSpySystem';
-import type { SatelliteGroup, SatelliteData } from '../types';
+import type { SatelliteGroup, SatelliteData, LaunchData } from '../types';
 
 type SeqPhase =
   | 'START' | 'WAITING_DATA' | 'START_ZOOM'
@@ -110,12 +110,42 @@ export default function CesiumGlobe() {
     [satellites, debrisList]
   );
 
+  function handleLaunchSelection(launch: LaunchData) {
+    setSelectedLaunch(launch);
+    setSelectedSat(null);
+
+    if (launch.pad.latitude && launch.pad.longitude) {
+      const lat = parseFloat(launch.pad.latitude);
+      const lon = parseFloat(launch.pad.longitude);
+
+      setSpyTargetLocation({
+        lat,
+        lon,
+        name: `Launch: ${launch.name}`,
+      });
+      setSpyModeActive(true);
+
+      if (viewerRef.current) {
+        viewerRef.current.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(lon, lat, 2500000),
+          orientation: {
+            heading: 0,
+            pitch: Cesium.Math.toRadians(-90),
+            roll: 0,
+          },
+          duration: 2.0,
+        });
+      }
+    }
+  }
+
   // ── Object selection & interaction ──
   const { selectedSat, selectedLaunch, setSelectedSat, setSelectedLaunch } =
     useObjectSelection({ 
       viewerRef, 
       satPrimitivesRef, 
       showSats: showSatsUI,
+    onLaunchSelect: handleLaunchSelection,
     onLocationSelect: useCallback((lat: number, lon: number) => {
       if (spyModeActive) {
         const name = `Manual: ${lat.toFixed(2)}, ${lon.toFixed(2)}`;
@@ -136,32 +166,6 @@ export default function CesiumGlobe() {
       }
     }, [spyModeActive, viewerRef])
     });
-
-  // ── Sync Launch Selection with Eyes Above Target ──
-  useEffect(() => {
-    if (selectedLaunch?.pad?.latitude && selectedLaunch?.pad?.longitude) {
-      const lat = parseFloat(selectedLaunch.pad.latitude);
-      const lon = parseFloat(selectedLaunch.pad.longitude);
-      setSpyTargetLocation({ 
-        lat, 
-        lon, 
-        name: `Launch: ${selectedLaunch.name}` 
-      });
-      setSpyModeActive(true);
-      
-      if (viewerRef.current) {
-        viewerRef.current.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(lon, lat, 2500000),
-          orientation: {
-            heading: 0,
-            pitch: Cesium.Math.toRadians(-90),
-            roll: 0,
-          },
-          duration: 2.0
-        });
-      }
-    }
-  }, [selectedLaunch, viewerRef]);
 
   // ── Eyes Above Mode System ──
   useSpySystem({ 
@@ -402,10 +406,7 @@ export default function CesiumGlobe() {
         magnetosphereActive={magnetosphereActive}
         solarWind={solarWindData}
         onToggleMagnetosphere={() => setMagnetosphereActive(!magnetosphereActive)}
-        onSelectLaunch={(launch) => {
-          setSelectedLaunch(launch);
-          setSelectedSat(null);
-        }}
+        onSelectLaunch={handleLaunchSelection}
       />
 
       <TimeBar
