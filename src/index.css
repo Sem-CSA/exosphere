@@ -1,3 +1,8 @@
+html {
+  width: 100%;
+  height: 100%;
+}
+
 :root {
   --primary-bg: #0a0a0f;
   --panel-bg: rgba(20, 20, 30, 0.65);
@@ -87,6 +92,7 @@ body {
 .z-0 { z-index: 0; }
 .z-10 { z-index: 10; }
 .z-20 { z-index: 20; }
+.z-50 { z-index: 50; }
 
 /* Spacing */
 .gap-1 { gap: 0.25rem; }
@@ -117,6 +123,10 @@ body {
 .mb-1 { margin-bottom: 0.25rem; }
 .mb-2 { margin-bottom: 0.5rem; }
 .mb-4 { margin-bottom: 1rem; }
+
+/* Viewport sizing */
+.w-screen { width: 100vw; }
+.h-screen { height: 100vh; }
 .ml-1 { margin-left: 0.25rem; }
 .ml-2 { margin-left: 0.5rem; }
 

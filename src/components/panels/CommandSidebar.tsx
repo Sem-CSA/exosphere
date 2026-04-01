@@ -78,6 +78,7 @@ interface CommandSidebarProps {
   magnetosphereActive: boolean;
   solarWind: SolarWindData | null;
   onToggleMagnetosphere: () => void;
+  onSelectLaunch: (launch: LaunchData) => void;
 }
 
 // ── Reusable Section Header ──
@@ -121,6 +122,7 @@ const CommandSidebar = memo(function CommandSidebar({
   spyModeActive, spyTargetLocation, spyDetectCount, spyWatchingCount, spyDangerLevel,
   onToggleSpyMode, onSetSpyData,
   magnetosphereActive, solarWind, onToggleMagnetosphere,
+  onSelectLaunch,
 }: CommandSidebarProps) {
 
   // Section expanded states
@@ -412,6 +414,7 @@ const CommandSidebar = memo(function CommandSidebar({
                         key={launch.id}
                         className="launch-item"
                         onClick={() => {
+                          onSelectLaunch(launch);
                           if (hasCoords) {
                             const lat = parseFloat(launch.pad.latitude);
                             const lon = parseFloat(launch.pad.longitude);

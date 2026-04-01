@@ -7,7 +7,7 @@ interface LaunchPanelProps {
 
 export default function LaunchPanel({ selectedLaunch, onClose }: LaunchPanelProps) {
   return (
-    <div className="absolute top-4 right-4 z-10 glass-panel p-5 w-80 flex flex-col shadow-2xl">
+    <div className="absolute top-4 right-4 glass-panel p-5 w-80 flex flex-col shadow-2xl animate-in fade-in slide-in-from-right-4 duration-300" style={{ zIndex: 1010 }}>
       <div className="flex justify-between items-start mb-4">
         <h2 className="text-lg font-bold text-orange-400">{selectedLaunch.name}</h2>
         <button className="text-secondary hover:text-white font-bold ml-2 bg-transparent" onClick={onClose}>✕</button>

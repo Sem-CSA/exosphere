@@ -17,7 +17,7 @@ export default function SearchBar({ allSats, onSelectSatellite }: SearchBarProps
   }, [searchQuery, allSats]);
 
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center w-80 max-w-[90%]">
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center w-64" style={{ maxWidth: '90%' }}>
       <div className="search-input-wrapper w-full">
         <Search size={15} className="search-input-icon" />
         <input

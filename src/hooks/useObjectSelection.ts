@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import * as Cesium from 'cesium';
+import { computePosition } from '../services/satelliteService';
 import type { SatelliteData, LaunchData } from '../types';
 
 interface UseObjectSelectionProps {
@@ -233,7 +234,36 @@ export function useObjectSelection({
         }
       });
 
-      fovEntitiesRef.current = [rfEntity, cameraEntity];
+      // 3. Orbit Trajectory Path — propagate +90 minutes for one full orbit ahead
+      const orbitPositions: Cesium.Cartesian3[] = [];
+      const now = Cesium.JulianDate.toDate(viewerRef.current.clock.currentTime);
+      const ORBIT_MINUTES = 90;
+      const STEP_MINUTES = 1;
+      for (let m = 0; m <= ORBIT_MINUTES; m += STEP_MINUTES) {
+        const t = new Date(now.getTime() + m * 60 * 1000);
+        const pos = computePosition(selectedSat, t);
+        if (pos) {
+          orbitPositions.push(Cesium.Cartesian3.fromElements(pos.x * 1000, pos.y * 1000, pos.z * 1000));
+        }
+      }
+
+      if (orbitPositions.length > 2) {
+        const orbitEntity = viewerRef.current.entities.add({
+          id: 'orbit-trajectory',
+          properties: new Cesium.PropertyBag({ type: 'orbit-helper' }),
+          polyline: {
+            positions: orbitPositions,
+            width: 3.5,
+            material: new Cesium.PolylineDashMaterialProperty({
+              color: Cesium.Color.fromCssColorString(selectedSat.colorHex).withAlpha(0.8),
+              dashLength: 12,
+            }),
+          },
+        });
+        fovEntitiesRef.current = [rfEntity, cameraEntity, orbitEntity];
+      } else {
+        fovEntitiesRef.current = [rfEntity, cameraEntity];
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSat]);
