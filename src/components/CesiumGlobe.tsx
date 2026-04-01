@@ -225,7 +225,7 @@ export default function CesiumGlobe() {
           roll: 0.0,
         }
       });
-      setSeqPhase('WAITING_DATA');
+      queueMicrotask(() => setSeqPhase('WAITING_DATA'));
     }
   }, [viewerRef, seqPhase, isFullAnim]);
 
