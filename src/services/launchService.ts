@@ -1,10 +1,10 @@
 import type { LaunchData } from '../types';
 
 // Using TheSpaceDevs DEV API to avoid strict rate limits during development.
-// mode=list returns ~40KB vs ~158KB for mode=detailed (we only need a few fields).
-const LAUNCH_API_URL = 'https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?limit=10&mode=list';
+// changed mode=list to mode=normal to ensure pad latitude and longitude are included
+const LAUNCH_API_URL = 'https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?limit=10&mode=normal';
 
-const LAUNCH_CACHE_KEY = 'exosphere_launch_cache';
+const LAUNCH_CACHE_KEY = 'exosphere_launch_cache_v2';
 const LAUNCH_CACHE_EXPIRY = 60 * 60 * 1000; // 1 hour — launch schedule rarely changes faster
 
 /** Shape of a single launch from the SpaceDevs API (subset of fields we use). */

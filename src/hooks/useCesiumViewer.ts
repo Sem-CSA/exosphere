@@ -49,6 +49,16 @@ export function useCesiumViewer(
       viewerRef.current.clock.shouldAnimate = true;
       viewerRef.current.clock.multiplier = 1;
 
+      // Set initial centered view of the globe
+      viewerRef.current.camera.setView({
+        destination: Cesium.Cartesian3.fromDegrees(0, 20, 25000000),
+        orientation: {
+          heading: 0,
+          pitch: Cesium.Math.toRadians(-90),
+          roll: 0,
+        },
+      });
+
       pointsRef.current = viewerRef.current.scene.primitives.add(
         new Cesium.PointPrimitiveCollection()
       );

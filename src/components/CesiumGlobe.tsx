@@ -16,7 +16,7 @@ import EyesAbovePanel from './panels/EyesAbovePanel';
 import LaunchPanel from './panels/LaunchPanel';
 import TimeBar from './panels/TimeBar';
 import { useSpySystem } from '../hooks/useSpySystem';
-import type { SatelliteGroup, SatelliteData } from '../types';
+import type { SatelliteGroup, SatelliteData, LaunchData } from '../types';
 
 type SeqPhase =
   | 'START' | 'WAITING_DATA' | 'START_ZOOM'
@@ -110,12 +110,42 @@ export default function CesiumGlobe() {
     [satellites, debrisList]
   );
 
+  function handleLaunchSelection(launch: LaunchData) {
+    setSelectedLaunch(launch);
+    setSelectedSat(null);
+
+    if (launch.pad.latitude && launch.pad.longitude) {
+      const lat = parseFloat(launch.pad.latitude);
+      const lon = parseFloat(launch.pad.longitude);
+
+      setSpyTargetLocation({
+        lat,
+        lon,
+        name: `Launch: ${launch.name}`,
+      });
+      setSpyModeActive(true);
+
+      if (viewerRef.current) {
+        viewerRef.current.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(lon, lat, 2500000),
+          orientation: {
+            heading: 0,
+            pitch: Cesium.Math.toRadians(-90),
+            roll: 0,
+          },
+          duration: 2.0,
+        });
+      }
+    }
+  }
+
   // ── Object selection & interaction ──
   const { selectedSat, selectedLaunch, setSelectedSat, setSelectedLaunch } =
     useObjectSelection({ 
       viewerRef, 
       satPrimitivesRef, 
       showSats: showSatsUI,
+    onLaunchSelect: handleLaunchSelection,
     onLocationSelect: useCallback((lat: number, lon: number) => {
       if (spyModeActive) {
         const name = `Manual: ${lat.toFixed(2)}, ${lon.toFixed(2)}`;
@@ -166,7 +196,7 @@ export default function CesiumGlobe() {
         setSpyModeActive(true);
         if (viewerRef.current) {
           viewerRef.current.camera.flyTo({
-            destination: Cesium.Cartesian3.fromDegrees(lon, lat, 3000000),
+            destination: Cesium.Cartesian3.fromDegrees(lon, lat, 2500000),
             orientation: { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0 },
             duration: 4.0
           });
@@ -188,10 +218,10 @@ export default function CesiumGlobe() {
     if (!isFullAnim || seqPhase !== 'START') return;
     if (viewerRef.current) {
       viewerRef.current.camera.setView({
-        destination: Cesium.Cartesian3.fromDegrees(0, 20, 8000000), // Start at 20 degrees latitude
+        destination: Cesium.Cartesian3.fromDegrees(0, 20, 8000000),
         orientation: {
           heading: 0.0,
-          pitch: Cesium.Math.toRadians(-90), // Look straight down at the 20deg latitude point
+          pitch: Cesium.Math.toRadians(-90),
           roll: 0.0,
         }
       });
@@ -266,8 +296,7 @@ export default function CesiumGlobe() {
     if (!viewer) return;
 
     let zoomVelocity = 0;
-    const maxZoomVelocity = 350000; // meters per frame
-    const targetHeight = 120000000; // 120,000 km
+    const maxZoomVelocity = 250000; // meters per frame
 
     const handleTick = () => {
       // Rotate Earth (rotate camera around origin)
@@ -276,12 +305,31 @@ export default function CesiumGlobe() {
       // Zoom out mechanics
       if (seqPhase !== 'WAITING_DATA') {
         const height = viewer.camera.positionCartographic.height;
+        
+        // Dynamically compute the destination height where Earth touches the top and bottom bounds of the screen
+        const radius = Cesium.Ellipsoid.WGS84.maximumRadius;
+        const frustum = viewer.scene.camera.frustum as Cesium.PerspectiveFrustum;
+        const aspectRatio = frustum.aspectRatio ?? 1.0;
+        let fovy = frustum.fov ?? Cesium.Math.toRadians(60);
+        
+        // In portrait mode, we must calculate the vertical FOV from the horizontal FOV
+        if (aspectRatio < 1.0) {
+          fovy = fovy / aspectRatio;
+        }
+        
+        const targetHeight = (radius / Math.sin(fovy / 2)) - radius;
+
         if (height < targetHeight) {
           // Smooth acceleration
           if (zoomVelocity < maxZoomVelocity) {
-            zoomVelocity += 5000;
+            zoomVelocity += 15000;
           }
-          viewer.camera.moveBackward(zoomVelocity);
+          // Don't overshoot
+          const step = Math.min(zoomVelocity, targetHeight - height);
+          viewer.camera.moveBackward(step);
+        } else if (height > targetHeight + 10) {
+          // If window is resized to be smaller, adjust the camera closer 
+          viewer.camera.moveForward(height - targetHeight);
         }
       }
     };
@@ -358,6 +406,7 @@ export default function CesiumGlobe() {
         magnetosphereActive={magnetosphereActive}
         solarWind={solarWindData}
         onToggleMagnetosphere={() => setMagnetosphereActive(!magnetosphereActive)}
+        onSelectLaunch={handleLaunchSelection}
       />
 
       <TimeBar
