@@ -93,8 +93,8 @@ export function useSatelliteLayer({
             position: Cesium.Cartesian3.ZERO,
             pixelSize: sat.group === 'STATION' ? 8 : (sat.group === 'OTHER' ? 3 : 5),
             color: Cesium.Color.fromCssColorString(sat.colorHex).withAlpha(0.85), // Final color always
-            outlineColor: Cesium.Color.TRANSPARENT,
-            outlineWidth: 0,
+            outlineColor: Cesium.Color.fromCssColorString(sat.colorHex).withAlpha(0.01), // Almost invisible, massively expands pickable hitbox area
+            outlineWidth: 10,
             show: true, // Always structural true to prevent WebGL buffer rebuild stutters
             id: sat,
           });

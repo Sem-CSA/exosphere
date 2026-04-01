@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import * as Cesium from 'cesium';
+import * as satellite from 'satellite.js';
 import { computePosition } from '../services/satelliteService';
 import type { SatelliteData, LaunchData } from '../types';
 
@@ -29,67 +30,89 @@ export function useObjectSelection({
     origColor: Cesium.Color;
   } | null>(null);
 
+  // Keep callback refs stable so the click handler never captures stale closures
+  const onLocationSelectRef = useRef(onLocationSelect);
+  const onLaunchSelectRef = useRef(onLaunchSelect);
+  useEffect(() => { onLocationSelectRef.current = onLocationSelect; }, [onLocationSelect]);
+  useEffect(() => { onLaunchSelectRef.current = onLaunchSelect; }, [onLaunchSelect]);
+
   // Deselect satellites if the master layer is hidden
   useEffect(() => {
     if (!showSats) queueMicrotask(() => setSelectedSat(null));
   }, [showSats]);
 
-  // Set up click handler
+  // Set up click handler — runs ONCE after viewer mounts
   useEffect(() => {
     if (!viewerRef.current) return;
     const viewer = viewerRef.current;
 
+    const findSelectablePick = (position: Cesium.Cartesian2) => {
+      const pickedObjects = viewer.scene.drillPick(position, 20, 10, 10);
+
+      return pickedObjects
+        .filter(p => {
+          if (p.id instanceof Cesium.Entity) {
+            const type = p.id.properties?.type?.getValue();
+            return type !== 'spy-footprint' && type !== 'orbit-helper';
+          }
+          return true;
+        })
+        .find(p => {
+          if (p.id instanceof Cesium.Entity) {
+            return p.id.properties?.type?.getValue() === 'launch';
+          }
+          return !!(p.id && typeof p.id === 'object' && 'tleLine1' in p.id);
+        });
+    };
+
     handlerRef.current = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
     handlerRef.current.setInputAction((click: { position: Cesium.Cartesian2 }) => {
       // ── Magnetic Picking Logic ──
-      // Since satellite points are tiny (3-5px), we perform a 'drillPick' 
-      // which scans all layers under the specific pixel.
-      const pickedObjects = viewer.scene.drillPick(click.position);
-      
-      // Filter out helper mission graphics (footprints/orbits)
-      const validPicks = pickedObjects.filter(p => {
-        if (p.id instanceof Cesium.Entity) {
-          const type = p.id.properties?.type?.getValue();
-          return type !== 'spy-footprint' && type !== 'orbit-helper';
-        }
-        return true;
-      });
+      // Satellites are tiny, so use a wider pick rectangle around the click.
+      const selectablePick = findSelectablePick(click.position);
 
-      const pickedObject = validPicks[0];
-
-      if (Cesium.defined(pickedObject)) {
+      if (Cesium.defined(selectablePick)) {
         // Handle Launch Clicks
-        if (pickedObject.id instanceof Cesium.Entity) {
-          const entity = pickedObject.id;
+        if (selectablePick.id instanceof Cesium.Entity) {
+          const entity = selectablePick.id;
           if (entity.properties && entity.properties.type?.getValue() === 'launch') {
             const launch = entity.properties.data.getValue() as LaunchData;
             setSelectedLaunch(launch);
-            onLaunchSelect?.(launch);
+            onLaunchSelectRef.current?.(launch);
             setSelectedSat(null);
             return;
           }
-        } 
-        
+        }
+
         // Handle Satellite/Debris Point Clicks
-        else if (pickedObject.id && typeof pickedObject.id === 'object' && 'tleLine1' in pickedObject.id) {
-          setSelectedSat(pickedObject.id as SatelliteData);
+        if (selectablePick.id && typeof selectablePick.id === 'object' && 'tleLine1' in selectablePick.id) {
+          setSelectedSat(selectablePick.id as SatelliteData);
           setSelectedLaunch(null);
           return;
         }
       }
 
       // ── Secondary Search (Aero/Sticky Pick) ──
-      // If we missed the tiny 3px point by a sliver, we check a 3x3 pixel neighborhood
-      // This is the 'secret sauce' for professional-feeling 3D selection.
-      if (!Cesium.defined(pickedObject)) {
+      // If we still miss, expand by a small buffer (points are tiny and fast).
+      if (!Cesium.defined(selectablePick)) {
         const neighbors = [
-          { x: 2, y: 0 }, { x: -2, y: 0 }, { x: 0, y: 2 }, { x: 0, y: -2 }
+          { x: 3, y: 0 }, { x: -3, y: 0 }, { x: 0, y: 3 }, { x: 0, y: -3 },
+          { x: 5, y: 5 }, { x: 5, y: -5 }, { x: -5, y: 5 }, { x: -5, y: -5 },
+          { x: 8, y: 0 }, { x: -8, y: 0 }, { x: 0, y: 8 }, { x: 0, y: -8 },
+          { x: 0, y: 0 } // Re-center in case of float issues
         ];
         for (const offset of neighbors) {
           const neighborPos = new Cesium.Cartesian2(click.position.x + offset.x, click.position.y + offset.y);
-          const neighborPicks = viewer.scene.drillPick(neighborPos);
-          const bestNeighbor = neighborPicks.find(p => p.id && typeof p.id === 'object' && 'tleLine1' in p.id);
+          const bestNeighbor = findSelectablePick(neighborPos);
           if (bestNeighbor) {
+            if (bestNeighbor.id instanceof Cesium.Entity) {
+              const launch = bestNeighbor.id.properties?.data.getValue() as LaunchData;
+              setSelectedLaunch(launch);
+              onLaunchSelectRef.current?.(launch);
+              setSelectedSat(null);
+              return;
+            }
+
             setSelectedSat(bestNeighbor.id as SatelliteData);
             setSelectedLaunch(null);
             return;
@@ -97,7 +120,7 @@ export function useObjectSelection({
         }
       }
 
-      // If nothing was picked, check for globe click
+      // Nothing was picked — treat as a globe click (deselect / spy-location)
       const ray = viewer.camera.getPickRay(click.position);
       if (ray) {
         const cartesian = viewer.scene.globe.pick(ray, viewer.scene);
@@ -105,18 +128,19 @@ export function useObjectSelection({
           const cartographic = Cesium.Ellipsoid.WGS84.cartesianToCartographic(cartesian);
           const lat = Cesium.Math.toDegrees(cartographic.latitude);
           const lon = Cesium.Math.toDegrees(cartographic.longitude);
-          onLocationSelect?.(lat, lon);
+          onLocationSelectRef.current?.(lat, lon);
+          // Only deselect when the user explicitly clicks empty earth
+          setSelectedSat(null);
+          setSelectedLaunch(null);
         }
       }
-
-      setSelectedSat(null);
-      setSelectedLaunch(null);
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
     return () => {
       if (handlerRef.current) handlerRef.current.destroy();
     };
-  }, [onLaunchSelect, onLocationSelect, viewerRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerRef]); // Intentionally runs once — callbacks accessed via refs above
 
   // Draw orbit path and highlight when satellite is selected
   useEffect(() => {
@@ -238,13 +262,16 @@ export function useObjectSelection({
         }
       });
 
-      // 3. Orbit Trajectory Path — propagate +90 minutes for one full orbit ahead
+      // 3. Orbit Trajectory Path — propagate exactly one full orbital revolution
       const orbitPositions: Cesium.Cartesian3[] = [];
       const now = Cesium.JulianDate.toDate(viewerRef.current.clock.currentTime);
-      const ORBIT_MINUTES = 90;
-      const STEP_MINUTES = 1;
-      for (let m = 0; m <= ORBIT_MINUTES; m += STEP_MINUTES) {
-        const t = new Date(now.getTime() + m * 60 * 1000);
+      // Derive period from TLE mean motion: no is in rad/min, period = 2π/no minutes
+      const satrec = satellite.twoline2satrec(selectedSat.tleLine1, selectedSat.tleLine2);
+      const periodMinutes = (2 * Math.PI) / satrec.no; // exact orbital period
+      const STEP_SECONDS = 30;  // 30s steps for smooth curve
+      const totalSeconds = Math.round(periodMinutes * 60);
+      for (let s = 0; s <= totalSeconds; s += STEP_SECONDS) {
+        const t = new Date(now.getTime() + s * 1000);
         const pos = computePosition(selectedSat, t);
         if (pos) {
           orbitPositions.push(Cesium.Cartesian3.fromElements(pos.x * 1000, pos.y * 1000, pos.z * 1000));
@@ -257,11 +284,9 @@ export function useObjectSelection({
           properties: new Cesium.PropertyBag({ type: 'orbit-helper' }),
           polyline: {
             positions: orbitPositions,
-            width: 3.5,
-            material: new Cesium.PolylineDashMaterialProperty({
-              color: Cesium.Color.fromCssColorString(selectedSat.colorHex).withAlpha(0.8),
-              dashLength: 12,
-            }),
+            width: 2.5,
+            material: Cesium.Color.fromCssColorString(selectedSat.colorHex).withAlpha(0.9),
+            clampToGround: false,
           },
         });
         fovEntitiesRef.current = [rfEntity, cameraEntity, orbitEntity];
@@ -269,7 +294,6 @@ export function useObjectSelection({
         fovEntitiesRef.current = [rfEntity, cameraEntity];
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSat]);
 
   return { selectedSat, selectedLaunch, setSelectedSat, setSelectedLaunch };
